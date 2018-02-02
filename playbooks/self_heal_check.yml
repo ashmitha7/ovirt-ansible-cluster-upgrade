@@ -1,0 +1,11 @@
+---
+- hosts: server
+  remote_user: root
+  gather_facts: no
+  tasks:
+  - name: Checking self heal status
+    self_heal: action=info
+               self_heal=yes
+               volume_name=volume2
+    register: result
+  - debug: msg="{{result}}"

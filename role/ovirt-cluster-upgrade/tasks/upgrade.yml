@@ -1,0 +1,40 @@
+---
+- block:
+
+  - name: Get volume names 
+    self_heal:
+      action: "{{action}}"
+      
+
+
+  - name: Complete self heal process              #self-heal only if gluster service is enabled.
+    self_heal:
+      action: "{{action}}"
+    with_items: 
+    register: self_heal_status
+    when : cluster_facts.gluster == true
+    until: self_heal_status.number_of_entries == 0
+
+  - name: Upgrade host
+    ovirt_hosts:
+      auth: "{{ ovirt_auth }}"
+      name: "{{ item.name }}"
+      state: upgraded
+      check_upgrade: "{{ check_upgrade }}"
+      timeout: "{{ upgrade_timeout }}"
+    register: host_upgraded
+
+  - name: Append host name to list of upgraded hosts
+    set_fact:
+      succeed_host_names: "{{ succeed_host_names }} + [ '{{ item.name }}' ]"
+    when: host_upgraded.changed
+
+  rescue:
+    - name: Report issues
+      fail:
+        msg: "Upgrade of host '{{ item.name }}' failed :( ."
+      ignore_errors: true
+
+    - name: Append host name to list of failed hosts
+      set_fact:
+        failed_host_names: "{{ failed_host_names }} + [ '{{ item.name }}' ]"

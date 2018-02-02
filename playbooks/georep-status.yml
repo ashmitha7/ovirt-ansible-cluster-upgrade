@@ -1,0 +1,37 @@
+---
+- hosts: server
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+  - name: checking the  status of geo-rep sessions
+    georep_facts: action=status
+    register: georep_session
+
+  - name: Get geo-rep session data
+    georep_facts: action=get_vol_data
+    register: volume_names_data
+
+  - name: If status is partial_faulty or faulty
+    skip:
+
+  - name: stopping geo-rep session
+    georep: action=stop
+            mastervol="{{ item.key }}"
+            slavevol="{{ item.value }}"
+    with_items: "{{ volume_names_data }}"
+    when: georep_session.status == "Started"
+
+  - include_task: self_heal.yml
+  - include_task: upgrade.yml
+
+  - name: re-starting geo-rep session
+    georep: action=start
+            mastervol="{{ item.key }}"
+            slavevol="{{ item.value }}"
+    with_items: "{{ volume_name_data }}"
+    when: georep_session.status == "Stopped"
+
+
+
+    # { key:value , status: Status_value }

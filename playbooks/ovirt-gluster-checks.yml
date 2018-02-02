@@ -1,0 +1,26 @@
+---
+- hosts: all
+  remote_user: root
+
+  tasks:
+
+  - name: Get hosts
+    ovirt_hosts_facts:
+      auth: "{{ ovirt_auth }}"
+      pattern: "cluster={{ cluster_name | mandatory }} {{ check_upgrade | ternary('', 'update_available=true') }} {{ host_names | map('regex_replace', '(.*)', 'name=\\1') | list | join(' or ') }}"
+      register: host_facts
+    check_mode: no
+
+  - name: Gluster process status
+    ovirt_gluster_facts:
+      auth: "{{ ovirt_auth }}"
+      pattern: " cluster= {{ cluster_name | mandatory}} {{ host_name | mandatory }} {{ gluster_process_status | default(started) }} "
+      register: gluster_result
+
+  - name: Stop gluster processes
+    ovirt_gluster:
+      auth: "{{ ovirt_auth }}"
+      state: stopped
+      name: "{{ gluster_process }}"   #gluster processes like glusterd, glusterfsd
+      force: true
+    when: gluster_result.gluster_process_status == started
